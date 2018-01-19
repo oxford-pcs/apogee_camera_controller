@@ -7,9 +7,9 @@ import pylibapogee.pylibapogee as apg
 import pylibapogee.pylibapogee_setup as SetupDevice
 
 class apogee_U2000():
-  def __init__(self):
-    self.cam = None
-
+  def __init__(self, camera_idx):
+    self.cam = self._connect(camera_idx=camera_idx)
+    
   def capture(self, exposureTime, reshape=True, override=False):
     if self.cam == None:
       raise RuntimeError("No camera initialised")
@@ -72,25 +72,31 @@ class apogee_U2000():
     attr['EXPTIME'] = (float(exposureTime), "exposure time (s)")
 
     return data, attr
-
-  def close(self):
-    if self.cam == None:
-      raise RuntimeError("No camera initialised")
-    self.cam.CloseConnection()
         
-  def connect(self, camera_idx=0, init=False):
+  def _connect(self, camera_idx=0):
+     '''
+       Connect to a USB camera.
+     '''
      devices = SetupDevice.GetUsbDevices()
      if(len(devices) == 0):
        raise RuntimeError("No USB devices found")
     
-     self.cam = SetupDevice.CreateAndConnectCam(devices[camera_idx])
+     cam = SetupDevice.CreateAndConnectCam(devices[camera_idx])
+       
+     return cam
 
-     if init:
-       self.setROSpeed('normal')
-       self.setADCGain(0)
-       self.setADCOffset(0)
+  def disconnect(self):
+    '''
+      Disconnect the camera from this instance.
+    '''
+    if self.cam == None:
+      raise RuntimeError("No camera initialised")
+    self.cam.CloseConnection()
 
   def getCoolerStatus(self):
+    '''
+      Get the current cooler status.
+    '''
     if self.cam.GetCoolerStatus() == apg.CoolerStatus_Off:
       status = "OFF"
     elif self.cam.GetCoolerStatus() == apg.CoolerStatus_RampingToSetPoint:
@@ -103,9 +109,19 @@ class apogee_U2000():
     print "CCD temp:\t" + str(self.cam.GetTempCcd())
     print "setpoint:\t" + str(self.cam.GetCoolerSetPoint())
     print "status:\t\t" + status
+    
+  def init(self, ROSpeed='normal', ADCGain=0, ADCOffset=0):
+    '''
+      Initialise common settings for a camera.
+    '''
+    self.setROSpeed(ROSpeed)
+    self.setADCGain(ADCGain)
+    self.setADCOffset(ADCOffset)    
 
   def setADCGain(self, gain=0):
-    ''' Sets gain for current ADC. Should be between 0 and 1023 '''
+    ''' 
+      Set the gain for current ADC. Should be between 0 and 1023 
+    '''
     if self.cam == None:
       raise RuntimeError("No camera initialised")
     if gain < 0 or gain > 1023:
@@ -113,15 +129,35 @@ class apogee_U2000():
     self.cam.SetAdcGain(gain, self.cam.GetCcdAdcSpeed(), 0)
 
   def setADCOffset(self, offset=0):
-    ''' Sets offset for current ADC. Should be between 0 and 255 '''
+    ''' 
+      Set the offset for current ADC. Should be between 0 and 255 
+    '''
     if self.cam == None:
       raise RuntimeError("No camera initialised")
     if offset < 0 or offset > 255:
       raise RuntimeError("Invalid offset setting")
     self.cam.SetAdcOffset(offset, self.cam.GetCcdAdcSpeed(), 0)
 
+  def setCooler(self, mode):
+    ''' 
+      Set the cooler on or off.
+    '''
+    if self.cam == None:
+      raise RuntimeError("No camera initialised")
+    self.cam.SetCooler(int(mode))
+  
+  def setCoolerSetPoint(self, sp):
+    '''
+      Set the cooler setpoint.
+    '''
+    if self.cam == None:
+      raise RuntimeError("No camera initialised")
+    self.cam.SetCoolerSetPoint(float(sp))
+    
   def setROSpeed(self, speed='normal'):
-    ''' Set the readout speed, can be 'normal' (16bit) or 'fast' (12bit) '''
+    '''
+      Set the readout speed. Can be 'normal' (16bit) or 'fast' (12bit) 
+    '''
     if self.cam == None:
       raise RuntimeError("No camera initialised")
     if speed == 'normal':
@@ -132,13 +168,5 @@ class apogee_U2000():
       print "Set readout speed to fast"
     else:
       raise RuntimeError("Readout speed value not recognised")
-
-  def setCoolerSetPoint(self, setpoint):
-    if self.cam == None:
-      raise RuntimeError("No camera initialised")
-    self.cam.SetCoolerSetPoint(float(setpoint))
-  
-
-
 
 

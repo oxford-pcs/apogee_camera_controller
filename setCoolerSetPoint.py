@@ -11,11 +11,10 @@ if __name__  == "__main__":
   options, args = parser.parse_args()
 
   try:
-    float(options.setPoint)
+    setP = float(options.setPoint)
   except TypeError:
     print "Set point must be a number."
 
-  c = apogee_U2000()
-  c.connect()
-  c.setCoolerSetPoint(options.setPoint)
-  c.close()
+  c = apogee_U2000(camera_idx=0)
+  c.setCoolerSetPoint(setP)
+  c.disconnect()
